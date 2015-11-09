@@ -1,4 +1,3 @@
-from gi.repository import Gtk
 import urllib.request
 import json
 import platform
@@ -35,31 +34,16 @@ class PyMCLibs:
         try:
             authopenurl = urllib.request.urlopen(authreq)
             authresponse = authopenurl.read().decode("utf-8")
-            print(authresponse)
         except urllib.error.HTTPError as e:
             if(e.code==403):
-                loginstatus.push(3, "Incorrect Username/Password (Code 403)")
-                spinner.stop()
-                usernameob.set_can_focus(True)
-                passwordob.set_can_focus(True)
-                return
+                return("wun")
             else:
-                loginstatus.push(4, "An unknown error has occured, please post this data on the launcher thread: "+ e)
-                spinner.stop()
-                usernameob.set_can_focus(True)
-                passwordob.set_can_focus(True)
-                return
+                return(e)
         except urllib.error.URLError:
-            loginstatus.push(5, "No internet connection")
-            spinner.stop()
-            usernameob.set_can_focus(True)
-            passwordob.set_can_focus(True)
-            return
-        #Sets the username & password entry boxes back to an editable mode.
-    #    usernameob.set_can_focus(True)
-    #    passwordob.set_can_focus(True)
+            return("-inet")
+        return(authresponse)
         
-    def getUUID(username):
+    def getUUID(self, username):
         uuidurl = "https://api.mojang.com/users/profiles/minecraft/"+username
         uuidreq = urllib.request.Request(uuidurl)
         try:
@@ -68,7 +52,7 @@ class PyMCLibs:
             uuidlibj = uuidresp.decode()
             uuidlib = json.loads(uuidlibj)
         except urllib.error.URLError:
-            return("noconn") #Return an error - No internet connection
+            return("-inet") #Return an error - No internet connection
         except ValueError:
             return("wun") #Return an error - Non-existant username
         except AttributeError:
@@ -86,25 +70,18 @@ class PyMCLibs:
             versionsnum = versions["latest"]
             with open(self.home+"/.minecraft/versions.json", "w+") as versionsjson:
                 versionsjson.write(versionsnonjson)
-            return(versionsnum)
+            return(versionsnum[self.settingsbranch])
         except urllib.error.URLError:
             if os.path.isfile(self.home+"/.minecraft/versions.json"):
                 with open(self.home+"/.minecraft/versions.json", "w+") as versionsjsonoffline:
                     versionsoffline = json.loads(versionsjsonoffline)
                     versionsnum = versionsoffline["latest"]
-                    return(versionsnum)
+                    return(versionsnum[self.settingsbranch])
             else:
                 return("nof") #Return an error - No internet and no offline file for versions
-    def getFiles(self):
-        versionsnum = self.getVersion()
+    def getFiles(self, versionsnum):
         if(versionsnum=="nof"):
             return("nof")
-        else:
-            pass
-        if self.settingsbranch=="release":
-                version = versionsnum["release"]
-        elif self.settingsbranch=="snapshot":
-                version = versionsnum["snapshot"]
                 
         if not os.path.isdir(self.home+"/.minecraft/versions"):
             os.makedirs(self.home+"/.minecraft/versions")
@@ -162,7 +139,7 @@ class PyMCLibs:
                     
 
     def launch(self,username, version, uuid, accesstoken):
-        f2 = open(home+"/.minecraft/versions/"+version+"/"+version+".json", "r")
+        f2 = open(self.home+"/.minecraft/versions/"+version+"/"+version+".json", "r")
         libsdata = f2.read()
         libsd = json.loads(libsdata)
         libraries = libsd['libraries']
@@ -171,7 +148,7 @@ class PyMCLibs:
             splititem = item['name'].split(":")
             splititem[0] = splititem[0].replace(".", "/")
             nearfullpath = "/".join(splititem)
-            fullpath = home+"/"+nearfullpath+"/"+splititem[-2]+"-"+splititem[-1]+".jar:"
+            fullpath = self.home+"/.minecraft/libraries/"+nearfullpath+"/"+splititem[-2]+"-"+splititem[-1]+".jar:"
             libsl.append(fullpath)
             libs = "".join(libsl)
         print(libs)
